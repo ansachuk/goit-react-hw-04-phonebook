@@ -1,86 +1,68 @@
-import { Component } from 'react';
+import { useState, useEffect, useRef } from "react";
 
-import { Notify } from 'notiflix';
+import { Notify } from "notiflix";
 
-import ContactForm from '../ContactForm/ContactForm';
-import Filter from '../Filter/Filter';
-import ContactList from '../ContactList/ContactList';
-import css from './App.module.css';
+import ContactForm from "../ContactForm/ContactForm";
+import Filter from "../Filter/Filter";
+import ContactList from "../ContactList/ContactList";
 
-const LOCAL_KEY = 'contacts';
+import css from "./App.module.css";
 
-export class App extends Component {
-  state = {
-    contacts: [],
-    filter: '',
-  };
+const LOCAL_KEY = "contacts";
 
-  onInputChange = e => {
-    const { name, value } = e.currentTarget;
-    this.setState({ [name]: value });
-  };
+export function App() {
+	const [filter, setFilter] = useState("");
+	const [contacts, setContacts] = useState([]);
 
-  onDeleteClick = id => {
-    Notify.info('Contact has deleted!');
-    return this.setState(prevState => {
-      return {
-        contacts: prevState.contacts.filter(contact => contact.id !== id),
-      };
-    });
-  };
+	let first = useRef(1);
 
-  componentDidMount = () => {
-    const localContacts = JSON.parse(localStorage.getItem(LOCAL_KEY));
-    if (localContacts) {
-      this.setState({
-        contacts: localContacts,
-      });
-    }
-  };
+	const onFilterChange = e => {
+		const { value } = e.currentTarget;
+		setFilter(value);
+	};
 
-  componentDidUpdate = (_, prevState) => {
-    if (prevState.contacts.length !== this.state.contacts.length) {
-      localStorage.setItem(LOCAL_KEY, JSON.stringify(this.state.contacts));
-    }
-  };
+	const onDeleteClick = id => {
+		Notify.info("Contact has deleted!");
 
-  onContactSave = contactData => {
-    const hasSameContactName = this.state.contacts.some(
-      contact => contact.name === contactData.name
-    );
+		return setContacts(prev => prev.filter(contact => contact.id !== id));
+	};
 
-    if (!hasSameContactName) {
-      Notify.success('Contact has added!');
-      return this.setState(prevState => {
-        return {
-          contacts: [...prevState.contacts, contactData],
-        };
-      });
-    }
+	const onContactSave = contactData => {
+		const hasSameContactName = contacts.some(contact => contact.name === contactData.name);
 
-    return Notify.failure(`${contactData.name} is already in contacts!`);
-  };
+		if (hasSameContactName) {
+			return Notify.failure(`${contactData.name} is already in contacts!`);
+		}
 
-  render() {
-    const { state, onInputChange, onContactSave, onDeleteClick } = this;
-    return (
-      <>
-        <h1 className={css.title}>Phone Book</h1>
+		Notify.success("Contact has added!");
+		return setContacts(prev => [...prev, contactData]);
+	};
 
-        <ContactForm onSubmit={onContactSave}></ContactForm>
-        <h2 className={css.subtitle}>Contacts</h2>
+	useEffect(() => {
+		const localContacts = JSON.parse(localStorage.getItem(LOCAL_KEY));
+		if (localContacts && first.current === 1) {
+			setContacts(localContacts);
+			first.current += 1;
+		}
+	}, []);
 
-        <Filter onInputChange={onInputChange} filter={state.filter} />
-        {state.contacts.length ? (
-          <ContactList
-            contacts={state.contacts}
-            filter={state.filter}
-            onDeleteClick={onDeleteClick}
-          />
-        ) : (
-          <p className={css.message}>You have no contacts yet!</p>
-        )}
-      </>
-    );
-  }
+	useEffect(() => {
+		localStorage.setItem(LOCAL_KEY, JSON.stringify(contacts));
+	}, [contacts]);
+
+	return (
+		<>
+			<h1 className={css.title}>Phone Book</h1>
+
+			<ContactForm onSubmit={onContactSave}></ContactForm>
+			<h2 className={css.subtitle}>Contacts</h2>
+
+			<Filter onInputChange={onFilterChange} filter={filter} />
+			{contacts.length ? (
+				<ContactList contacts={contacts} filter={filter} onDeleteClick={onDeleteClick} />
+			) : (
+				<p className={css.message}>You have no contacts yet!</p>
+			)}
+		</>
+	);
 }
